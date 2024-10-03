@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#! /usr/bin/env python3
 r"""Output Starlink user terminal data info in text format.
 
 Expects input as from the following command:
@@ -11,8 +11,10 @@ it will print the results in CSV format.
 """
 
 import argparse
-from datetime import datetime
-from datetime import timezone
+from datetime import (
+    datetime,
+    timezone,
+)
 import logging
 import re
 import sys
@@ -220,7 +222,7 @@ def loop_body(opts):
         csv_data = []
     else:
         history_time = int(time.time()) if opts.history_time is None else opts.history_time
-        csv_data = [datetime.utcfromtimestamp(history_time).isoformat()]
+        csv_data = [datetime.fromtimestamp(history_time, tz=timezone.utc).isoformat()]
 
     def cb_data_add_item(name, val):
         if opts.verbose:
@@ -242,14 +244,14 @@ def loop_body(opts):
     def cb_add_bulk(bulk, count, timestamp, counter):
         if opts.verbose:
             print("Time range (UTC):      {0} -> {1}".format(
-                datetime.utcfromtimestamp(timestamp).isoformat(),
-                datetime.utcfromtimestamp(timestamp + count).isoformat()))
+                datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat(),
+                datetime.fromtimestamp(timestamp + count, tz=timezone.utc).isoformat()))
             for key, val in bulk.items():
                 print("{0:22} {1}".format(key + ":", ", ".join(str(subval) for subval in val)))
         else:
             for i in range(count):
                 timestamp += 1
-                fields = [datetime.utcfromtimestamp(timestamp).isoformat()]
+                fields = [datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()]
                 fields.extend(["" if val[i] is None else str(val[i]) for val in bulk.values()])
                 print(",".join(fields))
 

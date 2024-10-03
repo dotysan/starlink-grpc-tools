@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#! /usr/bin/env python3
 """Output Starlink user terminal data info in text format.
 
 This script pulls the current status info and/or metrics computed from the
@@ -11,7 +11,10 @@ order in the output can change with the dish software. Instead of using
 the alert_detail mode, you can use the alerts bitmask in the status group.
 """
 
-from datetime import datetime
+from datetime import (
+    datetime,
+    timezone,
+)
 import logging
 import os
 import signal
@@ -218,8 +221,8 @@ def loop_body(opts, gstate, print_file, shutdown=False):
     def cb_add_bulk(bulk, count, timestamp, counter):
         if opts.verbose:
             print("Time range (UTC):      {0} -> {1}".format(
-                datetime.utcfromtimestamp(timestamp).isoformat(),
-                datetime.utcfromtimestamp(timestamp + count).isoformat()),
+                datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat(),
+                datetime.fromtimestamp(timestamp + count, tz=timezone.utc).isoformat()),
                   file=print_file)
             for key, val in bulk.items():
                 print("{0:22} {1}".format(key + ":", ", ".join(xform(subval) for subval in val)),
@@ -229,7 +232,7 @@ def loop_body(opts, gstate, print_file, shutdown=False):
         else:
             for i in range(count):
                 timestamp += 1
-                fields = [datetime.utcfromtimestamp(timestamp).isoformat()]
+                fields = [datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()]
                 fields.extend([xform(val[i]) for val in bulk.values()])
                 print(",".join(fields), file=print_file)
 
@@ -248,7 +251,7 @@ def loop_body(opts, gstate, print_file, shutdown=False):
     else:
         if csv_data:
             timestamp = status_ts if status_ts is not None else hist_ts
-            csv_data.insert(0, datetime.utcfromtimestamp(timestamp).isoformat())
+            csv_data.insert(0, datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat())
             print(",".join(csv_data), file=print_file)
 
     return rc

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#! /usr/bin/env python3
 """Write a PNG image representing Starlink obstruction map data.
 
 This scripts queries obstruction map data from the Starlink user terminal
@@ -31,7 +31,10 @@ edge of the circle.
 """
 
 import argparse
-from datetime import datetime
+from datetime import (
+    datetime,
+    timezone,
+)
 import logging
 import os
 import png
@@ -93,7 +96,7 @@ def loop_body(opts, context):
         now = int(time.time())
         filename = opts.filename.replace("%u", str(now))
         filename = filename.replace("%d",
-                                    datetime.utcfromtimestamp(now).strftime("%Y_%m_%d_%H_%M_%S"))
+                                    datetime.fromtimestamp(now, tz=timezone.utc).strftime("%Y_%m_%d_%H_%M_%S"))
         filename = filename.replace("%s", str(opts.sequence))
         out_file = open(filename, "wb")
     if not snr_data or not snr_data[0]:
