@@ -3,7 +3,7 @@ This repository has a handful of tools for interacting with the [gRPC](https://g
 
 For more information on what Starlink is, see [starlink.com](https://www.starlink.com/) and/or the [r/Starlink subreddit](https://www.reddit.com/r/Starlink/).
 
-## Prerequisites
+## Prerequisites / Installation
 
 Most of the scripts here are [Python](https://www.python.org/) scripts. To use them, you will either need Python installed on your system or you can use the Docker image. If you use the Docker image, you can skip the rest of the prerequisites other than making sure the dish IP is reachable and Docker itself. For Linux systems, the python package from your distribution should be fine, as long as it is Python 3, version 3.7 or later.
 
@@ -13,7 +13,9 @@ Running the scripts within a [Docker](https://www.docker.com/) container require
 
 ### Required Python modules (for non-Docker usage)
 
-The easiest way to get the Python modules used by the scripts is to do the following, which will install latest versions of a superset of the required modules:
+The scripts require a number of Python modules to be present in your local Python environment. It is recommended to [create and use a virtual environment](https://packaging.python.org/en/latest/guides/installing-using-pip-and-virtual-environments/#create-and-use-virtual-environments) (venv) for this purpose, but usually not required. However, some OS distribution's Python installations may require the use of venv when running at `root`/`Administrator` user. If you don't want to deal with that, either install as a different user, or add the `--user` option after the word `install` in the following command, but be aware that will only make it available to that user.
+
+The easiest way to get the required modules is to run the following command, which will install latest versions of a superset of the required modules:
 ```shell script
 pip install --upgrade -r requirements.txt
 ```
@@ -86,7 +88,7 @@ python3 dish_obstruction_map.py -t 3600 obstructions_%s.png
 
 Run it with the `-h` command line option for full usage details, including control of the map colors and color modes.
 
-#### Reboot, stow, and sleep control
+#### Reboot, stow, sleep, and GPS control
 
 `dish_control.py` is a simple stand alone script that can issue reboot, stow, or unstow commands to the dish:
 ```shell script
@@ -100,6 +102,14 @@ These operations can also be done using `grpcurl`, thus avoiding the need to use
 ```shell script
 python3 dish_control.py set_sleep -h
 ```
+
+It can also tell the dish whether or not to use GPS for position data. You can get usage instructions for that by doing:
+```shell script
+python3 dish_control.py set_gps -h
+```
+**NOTE**: This has no impact on whether or not the location data can be polled (see [above section](#enabling-access-to-location-data)). It only instructs the dish whether or not to use GPS for its own purposes. If this is not meaningful to you, then you should probably not mess with this setting. Note also that this setting is not preserved across dish reboot, at which point it will reset to the default of GPS enabled.
+
+Finally, all the commands supported by this script can be run periodically, either by using the `-t` option most of the other scripts support, or the `-c` option to use the cron-like scheduler described in the [next section](#firmware-update-checking-and-triggering).
 
 #### Firmware update checking and triggering
 
@@ -153,13 +163,13 @@ Possibly more simple examples to come, as the other scripts have started getting
 
 ## Running with Docker
 
-The supported docker image for this project is now the one hosted in the [GitHub Packages repository](https://github.com/sparky8512/starlink-grpc-tools/pkgs/container/starlink-grpc-tools). This is a multi-arch image built for `linux/amd64` (x64_64) and `linux/arm64` (aarch64) docker platforms.
+The supported docker image for this project is the one hosted in the [GitHub Packages repository](https://github.com/sparky8512/starlink-grpc-tools/pkgs/container/starlink-grpc-tools). This is a multi-arch image built for `linux/amd64` (x64_64) and `linux/arm64` (aarch64) docker platforms.
 
 You can get the "latest" image with the following command:
 ```shell script
 docker pull ghcr.io/sparky8512/starlink-grpc-tools
 ```
-This will pull the image tagged as "latest". There should also be images for all recent tagged releases of this project, but those tend to be few and far between, so the most recent one may be missing some important changes. See the package repository for a full list of tagged images.
+This will pull the image tagged as "latest", which will be the latest image generated that has at least been sanity-tested to not be completely broken. There should also be images for all recent tagged releases of this project. See the package repository for a full list of tagged images.
 
 You can run it with the following:
 ```shell script
@@ -191,8 +201,6 @@ docker run -d -t --name=starlink-grpc-tools -e INFLUXDB_HOST={InfluxDB Hostname}
     ghcr.io/sparky8512/starlink-grpc-tools -v -t 60 status alert_detail
 ```
 The `-t` option to `docker run` will prevent Python from buffering the script's standard output and can be omitted if you don't care about seeing the verbose output in the container logs as soon as it is printed.
-
-If there is some problem with accessing the image from the GitHub Packages repository, there is also an image available on Docker Hub, which can be accessed as `neurocis/starlink-grpc-tools`, but note that that image may not be as up to date with changes as the supported one.
 
 ## Running with SystemD
 

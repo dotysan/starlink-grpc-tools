@@ -84,6 +84,11 @@ This group holds information about the current state of the user terminal.
 : **is_snr_above_noise_floor** : Boolean indicating whether or not the dish
     considers the signal to noise ratio to be above some minimum threshold for
     connectivity, currently 3dB.
+: **gps_ready** : Boolean indicating whether or not the user terminal is ready
+    to use GPS for position data.
+: **gps_enabled** : Boolean indicating whether or not the user terminal will
+    use GPS for position data if and when it becomes ready.
+: **gps_sats** : Number of satellites actively being used.
 
 Obstruction detail status data
 ------------------------------
@@ -439,6 +444,9 @@ StatusDict = TypedDict(
         "direction_azimuth": float,
         "direction_elevation": float,
         "is_snr_above_noise_floor": bool,
+        "gps_ready": bool,
+        "gps_enabled": bool,
+        "gps_sats": int,
     })
 
 ObstructionDict = TypedDict(
@@ -810,6 +818,8 @@ def status_data(
             pass
 
     device_info = getattr(status, "device_info", None)
+    gps_stats = getattr(status, "gps_stats", None)
+    inhibit_gps = getattr(gps_stats, "inhibit_gps", None)
     return {
         "id": getattr(device_info, "id", None),
         "hardware_version": getattr(device_info, "hardware_version", None),
@@ -831,6 +841,9 @@ def status_data(
         "direction_azimuth": getattr(status, "boresight_azimuth_deg", None),
         "direction_elevation": getattr(status, "boresight_elevation_deg", None),
         "is_snr_above_noise_floor": getattr(status, "is_snr_above_noise_floor", None),
+        "gps_ready": getattr(gps_stats, "gps_valid", None),
+        "gps_enabled": None if inhibit_gps is None else not inhibit_gps,
+        "gps_sats": getattr(gps_stats, "gps_sats", None),
     }, {
         "wedges_fraction_obstructed[]": [None] * 12,  # obsoleted in grpc service
         "raw_wedges_fraction_obstructed[]": [None] * 12,  # obsoleted in grpc service
@@ -1705,5 +1718,35 @@ def set_sleep_config(start: int,
 
     try:
         call_with_channel(grpc_call, context=context)
+    except (AttributeError, ValueError, grpc.RpcError) as e:
+        raise GrpcError(e) from e
+
+
+def set_gps_config(enable: bool, context: Optional[ChannelContext] = None) -> bool:
+    """Set sleep mode configuration.
+
+    Args:
+        enable (bool): Whether or not to use GPS for position data.
+        context (ChannelContext): Optionally provide a channel for reuse
+            across repeated calls. If an existing channel is reused, the RPC
+            call will be retried at most once, since connectivity may have
+            been lost and restored in the time since it was last used.
+
+    Returns:
+        The newly set enable state.
+
+    Raises:
+        GrpcError: Communication or service error.
+    """
+    def grpc_call(channel: grpc.Channel) -> None:
+        if imports_pending:
+            resolve_imports(channel)
+        stub = device_pb2_grpc.DeviceStub(channel)
+        response = stub.Handle(device_pb2.Request(dish_inhibit_gps={"inhibit_gps": not enable}),
+                               timeout=REQUEST_TIMEOUT)
+        return not response.dish_inhibit_gps.inhibit_gps
+
+    try:
+        return call_with_channel(grpc_call, context=context)
     except (AttributeError, ValueError, grpc.RpcError) as e:
         raise GrpcError(e) from e
